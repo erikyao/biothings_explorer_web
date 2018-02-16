@@ -1,0 +1,71 @@
+*{
+  margin:0;
+  padding:0;
+}
+body {
+    margin:0;
+    padding:0;
+    font-family: Ubuntu, Arial, Sans-Serif;
+    line-height: 1.5em;
+}
+/*landingpage*/
+
+#index-banner {
+  height:60vh;
+}
+
+#index-banner h1 {
+  font-size: 50px;
+  color: white;
+  font-family: Ubuntu;
+}
+
+#index-banner h5{
+  font-size: 20px;
+  color: white;
+  font-family: Ubuntu;
+}
+
+.banner-image img {
+    display: block;
+    margin-left: auto;
+    margin-right: auto;
+    margin-top: auto;
+    margin-bottom: auto;
+    height: 80%;
+}
+
+#index-features h5{
+  font-size:18px;
+  font-family: Ubuntu;
+}
+
+/*Introduction section*/
+.intro {
+  height: 40vh;
+  border-top-color: #e5e6e8;
+  border-top-style: solid;
+}
+
+.intro h1 {
+  font-size: 2rem;
+  font-family: Ubuntu;
+  vertical-align: center;
+}
+
+.intro h5 {
+  font-size: 1.2rem;
+  font-family: Ubuntu;
+  text-align: left;
+}
+
+.intro-image img {
+    display: block;
+    margin-left: auto;
+    margin-right: auto;
+    margin-top: 3%;
+    margin-bottom: auto;
+    width: 90%;
+    max-height: 90%;
+    vertical-align: center;
+}
