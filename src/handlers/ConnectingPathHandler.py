@@ -462,6 +462,16 @@ class KnowledgeMap(BaseHandler):
                 self.write(json.dumps({"status": 400, "message": "No associations could be found for the input you give!!"}))
 
 class KnowledgeMapPath(BaseHandler):
+    """
+    Return knowledge paths connecting from start position to end position
+    each subpath contains subject, object, endpoint, predicate information
+
+    Parmas
+    ======
+    start: the path start point
+    end: the path end point
+    max_api: max number of API used, default is 3
+    """
     def get(self):
         start = self.get_query_argument('start')
         end = self.get_query_argument('end')
@@ -485,3 +495,29 @@ class KnowledgeMapPath(BaseHandler):
         else:
             self.set_status(400)
             self.write(json.dumps({"status": 400, "message": "No path could be found between " + start + " and " + end + '!'}))
+
+class ExploreSinglePath(BaseHandler):
+    """
+    Return knowledge exploration results for a single path and input
+
+    Parmas
+    ======
+    path: path
+    input_value: input for the start point
+    """
+    def get(self):
+        path = json.loads(self.get_query_argument('path'))
+        input_value = self.get_query_argument('input')
+        display_mode = self.get_query_argument('display_mode', 'json')
+        networkx_result = bt_explorer.find_output(path, input_value, display_graph=False)
+        if display_mode == 'visjs':
+            nodes = []
+            for i, item in enumerate(networkx_result.nodes):
+                nodes.append({'id': i, 'label': item.split(':')[-1], 'color': networkx_result.node[item]['color'], 'title': item.split(':')[0]})
+            nodes_list = list(networkx_result.nodes)
+            edges = []
+            for _edge in networkx_result.edges:
+                edges.append({'from': nodes_list.index(_edge[0]), 'to': nodes_list.index(_edge[1]), 'label': networkx_result.get_edge_data(_edge[0], _edge[1])[0]['label']})
+            self.write(json.dumps({"nodes": nodes, "edges": edges}))
+        else:
+            self.write(json.dumps({"nodes": list(networkx_result.nodes), "edges": list(networkx_result.edges)}))
