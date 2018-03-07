@@ -4,7 +4,7 @@ from collections import defaultdict
 
 from .utils import readFile
 from .config import FILE_PATHS
-from .jsonld_processor import find_base
+from .jsonld_processor import JSONLDHelper
 
 
 class RegistryParser:
@@ -26,6 +26,7 @@ class RegistryParser:
         self.api_info = {}
         self.endpoint_info = {}
         self.openapi_spec_path_list = []
+        self.jh = JSONLDHelper()
         if readmethod == 'http':
             self.registry_path = FILE_PATHS['registry_repo']['url']
             self.api_list_path = FILE_PATHS['api_list']['url']
@@ -45,6 +46,7 @@ class RegistryParser:
             self.openapi_spec_path_list = self.read_api_list_file()
             # read openapi file for each api
             for _file_path in self.openapi_spec_path_list:
+                print(_file_path)
                 parsed_result = self.parse_openapi_file(_file_path)
                 if 'api' in parsed_result:
                     self.api_info.update(parsed_result['api'])
@@ -60,10 +62,7 @@ class RegistryParser:
         data = readFile(self.id_mapping_path)
         # turn data frame into a dictionary and store in bioentity_info
         for index, row in data.iterrows():
-            if row['Type'] == 'Entity':
-                self.bioentity_info[row['URI']] = {'registry_identifier': row['Registry identifier'], 'alternative_names': row['Alternative name(s)'],
-                                                   'description': row['Description'], 'identifier_pattern': row['Identifier pattern'],
-                                                   'preferred_name': row['Recommended name'], 'type': row['Type'], 'semantic type': row['Semantic Type']}
+            self.bioentity_info[row['URI']] = {'description': row['Description'], 'preferred_name': row['Recommended name'], 'semantic type': row['Semantic Type']}
         return self.bioentity_info
 
     def prefix2uri(self, prefix, verbose=False):
@@ -142,10 +141,12 @@ class RegistryParser:
         parsed_result['api'] = {api_name: {'info': data['info'], 'servers': data['servers'], 'endpoints': []}}
         # parse endpoint info
         for _name, _info in data['paths'].items():
+            # get endpoint outputs from x-responseValueType
             if 'x-responseValueType' in _info['get']['responses']['200']:
                 _output = [_item['valueType'] for _item in _info['get']['responses']['200']['x-responseValueType'] if _item['valueType'] in self.bioentity_info]
             else:
                 continue
+            # get endpoint inputs from x-valueType
             if 'x-valueType' in _info['get']['parameters'][0]:
                 _input = [_item for _item in _info['get']['parameters'][0]['x-valueType'] if _item in self.bioentity_info]
             else:
@@ -154,24 +155,18 @@ class RegistryParser:
             parsed_result['endpoints'].update({endpoint_name: _info})
             # extract relationship info from the json-ld context file
             relation = {}
+            # get relationship between inputs and outputs from JSON-LD context files
             if 'x-JSONLDContext' in _info['get']['responses']['200']:
                 if self.readmethod == 'http':
                     jsonld_path = urljoin(self.registry_path, _info['get']['responses']['200']['x-JSONLDContext'])
                 elif self.readmethod == 'filepath':
                     jsonld_path = os.path.join(self.registry_path, _info['get']['responses']['200']['x-JSONLDContext'])
-                if 'monarch' in endpoint_name:
-                    relation = {}
-                    for _op in _output:
-                        try:
-                            relation[_op] = [readFile(jsonld_path)['@context']["associations"]["@context"]["object"]["@context"]["id"]['@id']]
-                        except:
-                            relation[_op] = [readFile(jsonld_path)['@context']["associations"]["@context"]["subject"]["@context"]["id"]['@id']]
-                elif 'disease-ontology' in endpoint_name:
+                if 'disease-ontology' in endpoint_name:
                     relation = {}
                     for _op in _output:
                         relation[_op] = ['ont:hasXref']
                 else:
-                    relation = find_base(readFile(jsonld_path), relation=defaultdict(set))
+                    relation = self.jh.jsonld_relation_parser(readFile(jsonld_path))
                 parsed_result['endpoints'][endpoint_name].update({'jsonld_context': jsonld_path})
 
             #for _op in _output:
