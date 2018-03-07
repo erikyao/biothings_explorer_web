@@ -14,7 +14,7 @@ FILE_PATHS = {
         "file": os.path.join(os.path.dirname(__file__), "openapi_specs/API_LIST.yml")
     },
     "id_mapping": {
-        "url": "https://raw.githubusercontent.com/NCATS-Tangerine/translator-api-registry/kevin/ID_MAPPING.csv",
-        "file": os.path.join(os.path.dirname(__file__), "openapi_specs/ID_MAPPING.csv")
+        "url": "https://raw.githubusercontent.com/NCATS-Tangerine/translator-api-registry/kevin/ID_MAPPING_NEW.csv",
+        "file": os.path.join(os.path.dirname(__file__), "openapi_specs/ID_MAPPING_NEW.csv")
     }
 }
