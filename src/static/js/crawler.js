@@ -8,7 +8,7 @@ function fetch_crawler_results(prefix, input_value){
     var promise = $.ajax({
         type:"GET",
         url: "/explorer/api/v1/crawler",
-        data: {input_type: prefix, input_value: input_value},
+        data: {input_type: prefix, input_value: input_value, 'summary': True},
         datatype: "json"
     });
     return promise;
