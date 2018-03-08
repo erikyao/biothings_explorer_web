@@ -8,11 +8,13 @@ from joblib import Parallel, delayed
 import multiprocessing
 
 from biothings_explorer import BioThingsExplorer
-from biothings_explorer.jsonld_processor import json2jsonld, jsonld2nquads
+from biothings_explorer.jsonld_processor import JSONLDHelper
+from biothings_explorer.utils import property_uri_2_prefix_dict
 from .basehandler import BaseHandler
 
 requests_cache.install_cache('biothings_cache', backend='sqlite', expire_after=36000)
 bt_explorer = BioThingsExplorer()
+jh = JSONLDHelper()
 
 def find_endpoint(input_type):
     """
@@ -72,6 +74,8 @@ def uri2curie(URI):
     if _uri in bt_explorer.registry.bioentity_info:
         prefix = bt_explorer.registry.bioentity_info[_uri]['preferred_name']
         return (prefix + ':' + _value)
+    else:
+        return _value
 
 def extractnquads(nquads):
     """
@@ -111,40 +115,60 @@ def exploreinput(input_type, input_value):
     ======
     List of (CURIE, RELATION, Endpoint, API)
     """
-    start = timer()
     endpoints = find_endpoint(input_type)
-    end = timer()
-    print('Amount of time used for finding endpoints is : {}'.format(end - start))
-    start = timer()
     json_docs = get_json(endpoints, input_type, input_value)
-    end = timer()
-    print('Amount of time used for making API calls and retrieving JSON docs is : {}'.format(end - start))
     jsonld_docs = []
-    start = timer()
     for json_doc in json_docs:
         endpoint_name = json_doc[0]
         if 'jsonld_context' in bt_explorer.registry.endpoint_info[endpoint_name]:
             jsonld_context_path = bt_explorer.registry.endpoint_info[endpoint_name]['jsonld_context']
-            jsonld_docs.append(json2jsonld(json_doc[1], jsonld_context_path))
+            jsonld_docs.append(jh.json2jsonld(json_doc[1], jsonld_context_path))
         else:
             jsonld_docs.append(None)
-    end = timer()
-    print('Amount of time used for adding JSON-LD context is : {}'.format(end - start))
-    start = timer()
-    nquads_list = jsonld2nquads(jsonld_docs)
-    end = timer()
-    print('Amount of time used for converting JSON docs to Nquads is : {}'.format(end - start))
+    nquads_list = jh.jsonld2nquads(jsonld_docs)
     outputs = defaultdict(list)
-    start = timer()
     for endpoint, nquads in list(zip(endpoints,nquads_list)):
-        _output = extractnquads(nquads)
+        # get all possible associations of the endpoint
+        association_list = bt_explorer.registry.endpoint_info[endpoint]['associations']
+        if "@default" in nquads:
+            _output = jh.fetch_properties_by_association_in_nquads(nquads["@default"], association_list)
+            for _assoc, _objects in _output.items():
+                for _object in _objects:
+                    reorganized_data = {'endpoint': endpoint, 'api': bt_explorer.registry.endpoint_info[endpoint]['api'], 'predicate': _assoc.replace('http://biothings.io/explorer/vocab/objects/', '')}
+                    for _property, _uris in _object.items():
+                        if len(_uris) == 1:
+                            reorganized_data.update({property_uri_2_prefix_dict[_property]: uri2curie(_uris[0])})
+                        else:
+                            curies = [uri2curie(_uri) for _uri in _uris]
+                            reorganized_data.update({property_uri_2_prefix_dict[_property]: curies})
+                    object_id_prefix = reorganized_data['object.id'].split(':')[0]
+                    object_semantic_type = bt_explorer.registry.prefix2semantictype(object_id_prefix)
+                    outputs[object_semantic_type].append(reorganized_data)
+    property_summary = defaultdict(set)
+    semantic_type_summary = defaultdict(set)
+    summary = {}
+    for semantic_type, pair in outputs.items():
+        summary[semantic_type] = defaultdict(set)
+        for _doc in pair:
+            for _property, _value in _doc.items():
+                if _property == 'object.id':
+                    summary[semantic_type][_property].add(_value.split(':')[0])
+                elif _property not in ['object.id-secondary', 'object.label']:
+                    if type(_value) != list:
+                        summary[semantic_type][_property].add(_value)
+                    else:
+                        for _single_value in _value:
+                            summary[semantic_type][_property].add(_single_value)
+    for k,v in summary.items():
+        for _k, _v in v.items():
+            summary[k][_k] = list(_v)
+    return {'linkedData': outputs, 'summary': summary}
+    """
         if _output:
             for _pair in _output:
                 semantic_type = bt_explorer.registry.prefix2semantictype(_pair['curie'].split(':')[0])
                 _pair.update({'endpoint': endpoint, 'api': bt_explorer.registry.endpoint_info[endpoint]['api'], 'prefix': _pair['curie'].split(':')[0]})
                 outputs[semantic_type].append(_pair)
-    end = timer()
-    print('Amount of time used for orgainze linked data information is : {}'.format(end - start))
     summary = {}
     start = timer()
     for semantic_type, pair in outputs.items():
@@ -161,7 +185,7 @@ def exploreinput(input_type, input_value):
     print('Amount of time used for organizing summary is : {}'.format(end - start))
     results = {'summary': summary, 'linkedData': outputs}
     return results
-
+    """
 class Crawler(BaseHandler):
     """
     This function serves as one BioThings Explorer API endpoint
@@ -174,8 +198,15 @@ class Crawler(BaseHandler):
 
     """
     def get(self):
-        input_type = self.get_argument('input_type')
-        input_value = self.get_argument('input_value')
+        input_type = self.get_query_argument('input_type')
+        input_value = self.get_query_argument('input_value')
+        output_summary = self.get_query_argument('summary', False)
         results = exploreinput(input_type, input_value)
         if results:
-            self.write(json.dumps(results))
+            if output_summary:
+                self.write(json.dumps(results))
+            else:
+                self.write(json.dumps({'linkedData': results['linkedData']}))
+        else:
+            self.set_status(400)
+            self.write(json.dumps({"status": 400, "message": "No linked data could be found for " + input_type + ":" + input_value + '!'}))
