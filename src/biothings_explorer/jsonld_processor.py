@@ -32,7 +32,9 @@ class JSONLDHelper:
         When the JSONLD Python client is ready to adapt to 1.1, 
         should switch to the Python client
         """
-        doc = json.dumps(doc).replace(' ', '')
+        """
+        No longer need JSON-LD Ruby Client
+        PyLD for 1.1 json-ld version is available
         # the following 6 lines use JSON-LD Ruby client to convert
         # JSON-LD document into NQuads format
         cmd = 'jsonld --validate --format nquads'
@@ -41,7 +43,11 @@ class JSONLDHelper:
         stdout_data = p.communicate()[0]
         p.stdin.close()
         _response = stdout_data.decode()
-        # deal with cases when JSON-LD Ruby client returns an error
+        """
+        # convert from jsonld doc to nquads format
+        nquads = jsonld.to_rdf(jsonld_doc, {'format': "application/nquads"})
+        """
+        No longer need to deal with ruby error message
         if _response.startswith(('Error', 'ERROR')):
             logger.error("An error occured when JSON-LD Ruby client tries to parse the JSON-LD. \
                          The first 100 chars of the JSON document is %s", jsonld_doc[:100])
@@ -51,14 +57,14 @@ class JSONLDHelper:
             logger.warning("0 statements is found when JSON-LD Ruby client tries to parse the JSON-LD input.\
                            The first 100 chars of the JSON document is %s", jsonld_doc[:100])
         else:
-            try:
-                _nquad = re.sub('Pased .*second.\n', '', _response)
-                return t.parse_nquads(_nquad)
-            except Exception as e:
-                logger.error("Something Unexpected happend when JSON-LD Ruby client tries to parse the JSON-LD. \
-                             The first 100 chars of the JSON document is %s", jsonld_doc[:100])
-                logger.error(e, exc_info=True)
-                return None
+        """
+        try:
+            return self.processor.parse_nquads(nquads)
+        except Exception as e:
+            logger.error("Something Unexpected happend when JSON-LD Python client tries to parse the JSON-LD. \
+                         The first 100 chars of the JSON document is %s", json.dumps(jsonld_doc[:100]))
+            logger.error(e, exc_info=True)
+            return None
 
     def jsonld2nquads(self, jsonld_docs):
         """
@@ -140,17 +146,26 @@ class JSONLDHelper:
         return nquads
 
     def find_object_properties_in_jsonld(self, _dict):
+        """
+        extract the @base field corresponding to "attr:id" in a nested JSON-LD context file
+        """
         for k,v in _dict.items():
             # check if @id startswith "attr:" or "rel:"
             if isinstance(v, dict) and "@id" in v and v["@id"] == "attr:id":
+                # @base should be in the child level of @context
                 if "@base" in v["@context"]:
                     self.temp_attr_id = v["@context"]["@base"]
                 else:
                     print('@base should be included here! Something wrong with the JSON-LD context file!!')
+            # otherwise, recall this function to look into the child level
             elif isinstance(v, dict):
                 self.find_object_properties_in_jsonld(v)
 
     def jsonld_parser_helper(self, _dict, relation=defaultdict(set)):
+        """
+        extract relationship information from "@id" which startsfrom "assoc:"
+        extract output information from "@base"
+        """
         for k, v in _dict.items():
             # First, looking for value of @id startswith "assoc"
             # this represents an association in the nested structure
@@ -158,6 +173,7 @@ class JSONLDHelper:
                 # Next, looking for whether "@base" exists in the direct child level
                 if "@context" in v and "@base" in v["@context"]:
                     relation[v["@context"]["@base"]].add(v["@id"])
+                # If "@base" not exists in direct child level, look for levels deeper
                 elif "@context" in v:
                     self.temp_attr_id = None
                     self.find_object_properties_in_jsonld(v["@context"])
@@ -187,8 +203,49 @@ class JSONLDHelper:
             return
         return self.jsonld_parser_helper(jsonld_context, relation=defaultdict(set))
 
+    def fetch_object_value_by_predicate_value_in_nquads(self, nquads, predicate_value):
+        """
+        Given a nquads parsing results and a predicate_value
+        find the corresponding object value(s)
+        """
+        object_values = []
+        for _nquad in nquads:
+            if _nquad['predicate']['value'] == predicate_value:
+                object_values.append(_nquad['object']['value'])
+        return object_values
 
+    def fetch_object_and_predicate_value_by_subject_value_in_nquads(self, nquads, subject_value, results=None):
+        """
+        Given a nquads parsing results and a subject_value
+        find the corresponding object and predicate value
+        """
+        if not results:
+            results = defaultdict(list)
+        for _nquad in nquads:
+            if _nquad['subject']['value'] == subject_value:
+                current_predicate_value = _nquad['predicate']['value']
+                current_object_value = _nquad['object']['value']
+                if current_predicate_value != 'http://biothings.io/pass/':
+                    results[current_predicate_value].append(_nquad['object']['value'])
+                else:
+                    results = self.fetch_object_and_predicate_value_by_subject_value_in_nquads(nquads, _nquad['object']['value'], results)
+        return results
 
+    def fetch_properties_by_association_in_nquads(self, nquads, association_list):
+        results = {}
+        for _association in association_list:
+            results[_association] = []
+            object_values = self.fetch_object_value_by_predicate_value_in_nquads(nquads, _association)
+            for _object_value in object_values:
+                if _object_value.startswith('_:'):
+                    object_predicate_dict = self.fetch_object_and_predicate_value_by_subject_value_in_nquads(nquads, _object_value)
+                    if object_predicate_dict:
+                        results[_association].append(object_predicate_dict)
+                    else:
+                        print("Could not fetch any properties from the given association: {}".format(_object_value))
+                else:
+                    results[_association].append({'http://biothings.io/explorer/vocab/attributes/id': _object_value})
+        return results
 
 t = jsonld.JsonLdProcessor()
 
