@@ -244,7 +244,7 @@ class JSONLDHelper:
                     else:
                         print("Could not fetch any properties from the given association: {}".format(_object_value))
                 else:
-                    results[_association].append({'http://biothings.io/explorer/vocab/attributes/id': _object_value})
+                    results[_association].append({'http://biothings.io/explorer/vocab/attributes/id': [_object_value]})
         return results
 
 t = jsonld.JsonLdProcessor()
