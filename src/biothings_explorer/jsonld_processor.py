@@ -100,7 +100,7 @@ class JSONLDHelper:
                            You input is %s. The first 100 chars of the input is %s", type(jsonld_docs), jsonld_doc[:100])
             return None
 
-    def json2jsonld(json_docs, jsonld_context_path):
+    def json2jsonld(self, json_docs, jsonld_context_path):
         """
         Given a JSON document and the endpoint where the doc comes from
         Fetch the JSON-LD context file for the endpoint
@@ -250,6 +250,25 @@ class JSONLDHelper:
 t = jsonld.JsonLdProcessor()
 
 def process_jsonld(doc):
+    # cmd = 'ruby jsonld_test_cli.rb -a compact'
+    doc = json.dumps(doc)
+    logger.debug('The JSONLD file after json.dumps is %s', doc)
+    RUBY_JSONLD_CMD = 'jsonld'
+    cmd = RUBY_JSONLD_CMD + ' '
+    cmd += '--validate --format nquads'
+    p = Popen(cmd.split(), stdout=PIPE, stdin=PIPE, stderr=STDOUT)
+    p.stdin.write(doc.encode('utf-8'))
+    # stdout_data = p.communicate(input=doc.encode('utf-8'))[0]
+    stdout_data = p.communicate()[0]
+    p.stdin.close()
+    _response = stdout_data.decode()
+    if 'Parsed' in _response:
+        _nquad = re.sub('Parsed .*second.\n', '', _response)
+        return t.parse_nquads(_nquad)
+    else:
+        return None
+
+def json2jsonld(json_doc, jsonld_context_path):
     """
 
     """
@@ -269,8 +288,6 @@ def process_jsonld(doc):
         return t.parse_nquads(_nquad)
     else:
         return None
-
-
 
 '''
 def jsonld2nquads(jsonld_doc, mode='batch'):
