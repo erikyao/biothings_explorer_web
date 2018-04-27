@@ -5,3 +5,10 @@
 __pycache__
 
 *.pyc
+
+# test folder
+/test/
+
+# ENV folder
+/ENV/
+
