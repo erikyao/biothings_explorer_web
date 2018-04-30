@@ -15,19 +15,12 @@ class DirectInput2OutputHandler(BaseHandler):
     DefaultDict grouped by semantic type
 
     """
-    """
-    def __init__(self):
-        # utilize apicallhandler function
-        ah = ApiCallHandler()
-    """
-
     def get(self):
         # read in parameters, all parameters are required
         ah = ApiCallHandler()
         input_prefix = self.get_query_argument('input_prefix')
         input_value = self.get_query_argument('input_value')
         output_prefix = self.get_query_argument('output_prefix')
-        print(input_prefix)
         #endpoint = self.get_query_argument('endpoint', None)
 
         # convert from prefix to uri
@@ -58,7 +51,9 @@ class DirectInput2OutputHandler(BaseHandler):
 
         if outputs:
             self.write(json.dumps({'data': outputs}))
+        # handle cases where no output could be extracted!
         else:
             self.set_status(400)
             self.write(json.dumps({"status": 400, "message": "Endpoints could be located connecting " + input_prefix +
-                                   " to " + output_prefix + ". The endpoints are " + str(endpoints) + ". However, no output could be found using the endpoint!"}))
+                                   " to " + output_prefix + ". The endpoints are " + str(endpoints) +
+                                   ". However, no output could be found using the endpoint!"}))
