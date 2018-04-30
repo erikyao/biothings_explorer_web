@@ -33,16 +33,29 @@ class SemanticQueryHelper:
         else:
             predicate = [_predicate.replace('assoc:', 'http://biothings.io/explorer/vocab/objects/') for _predicate in predicate]
         try:
-            response = await aiohttp.request('GET', api_call_params[0], params=api_call_params[1])
+            response = await aiohttp.request('GET', api_call_params[0], params=api_call_params[1], headers={'Accept': 'application/json'})
         except:
             return None
         json_response = await response.json()
-        outputs = self.ah.extract_output(json_response, endpoint_name, output_type, predicate=predicate)
-        return outputs
+        final_results = []
+        if type(predicate) != list:
+            outputs = self.ah.extract_output(json_response, endpoint_name, output_type, predicate=predicate)
+            for i in range(len(outputs)):
+                if outputs[i]:
+                    final_results.append({'input': (input_value, self.registry.bioentity_info[input_type]['preferred_name']), 'output': (outputs[i]),
+                                          'endpoint': endpoint_name, 'target': outputs[i][0]['target']['id']})
+        else:
+            for _predicate in predicate:
+                outputs = self.ah.extract_output(valid_responses, endpoint_name, output_type, predicate=_predicate)
+            for i in range(len(outputs)):
+                if outputs[i]:
+                    final_results.append({'input': (input_value, self.registry.bioentity_info[input_type]['preferred_name']), 'output': (outputs[i]),
+                                          'endpoint': endpoint_name, 'target': outputs[i][0]['target']['id']})
+        return final_results
 
     async def asynchronous(self, paths):
         start = time.time()
-        tasks = [asyncio.ensure_future(self.fetch_async(a,b,c,d)) for (a,b,c,d) in paths]
+        tasks = [asyncio.ensure_future(self.fetch_async(a, b, c, d)) for (a, b, c, d) in paths]
         results = await asyncio.wait(tasks)
         print("Process took: {:.2f} seconds".format(time.time() - start))
         return results
@@ -59,6 +72,7 @@ class SemanticQueryHelper:
         # Find semantic type
         input_semantic_type = self.registry.prefix2semantictype(input_prefix)
         output_semantic_type = self.registry.prefix2semantictype(output_prefix)
+
         # find input synonyms
         if input_semantic_type == 'gene':
             input_synonyms = self.converter.find_gene_synonym(input_value, input_prefix)[0]
@@ -83,7 +97,7 @@ class SemanticQueryHelper:
         ioloop = asyncio.get_event_loop()
         done, _ = ioloop.run_until_complete(self.asynchronous(actual_paths))
         for fut in done:
-            results.append(fut.result())
+            results+= fut.result()
         #ioloop.close()
         # align output
         """
