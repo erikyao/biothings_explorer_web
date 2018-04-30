@@ -129,7 +129,7 @@ class PathPlanner:
                 filtered_paths.append(path)
         return filtered_paths
 
-    def find_path_between_two_semantic_types(self, input_type, output_type):
+    def find_path_between_two_semantic_types(self, input_type, output_type, filter_duplicate=True):
         """
         
         """
@@ -140,4 +140,12 @@ class PathPlanner:
             for _output_prefix in available_output_prefixes:
                 if self.nh.find_direct_paths_connecting_input_and_output(_input_prefix, _output_prefix):
                     paths += self.nh.find_direct_paths_connecting_input_and_output(_input_prefix, _output_prefix)
+        if filter_duplicate:
+            new_paths = []
+            apis = []
+            for _path in paths:
+                if _path[1] not in apis:
+                    apis.append(_path[1])
+                    new_paths.append(_path)
+            return new_paths
         return paths
