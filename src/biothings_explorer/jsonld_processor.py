@@ -85,14 +85,23 @@ class JSONLDHelper:
         # handle cases where input is a list of JSON documents
         # in this case, the results will also be a list of NQuads parsing results
         if type(jsonld_docs) == list and type(jsonld_docs[0]) == dict:
-            results = Parallel(n_jobs=multiprocessing.cpu_count())(delayed(self.jsonld2nquads_helper)(_doc) for _doc in jsonld_docs)
-            return results
+            #results = Parallel(n_jobs=multiprocessing.cpu_count())(delayed(self.jsonld2nquads_helper)(_doc) for _doc in jsonld_docs)
+            results = []
+            for _doc in jsonld_docs:
+                results.append(self.jsonld2nquads_helper(_doc))
+            if len(results) == 1:
+                return results[0]
+            else:
+                return results
         # handle cases where input is a single JSON object document
         # in this case, the results will be a single NQuads parsing result
         elif type(jsonld_docs) == dict:
+            """
             jsonld_docs = [jsonld_docs]
             results = Parallel(n_jobs=multiprocessing.cpu_count())(delayed(self.jsonld2nquads_helper)(_doc) for _doc in jsonld_docs)
             return results[0]
+            """
+            return self.jsonld2nquads_helper(jsonld_docs)
         # if the input is neither list of json_docs nor single json_doc
         # log error message and return None
         else:
@@ -113,7 +122,7 @@ class JSONLDHelper:
         jsonld_context = readFile(jsonld_context_path)
         if type(json_docs) == list and type(json_docs[0]) == dict:
             jsonld_docs = [json_doc.update(jsonld_context) for json_doc in json_docs]
-            return jsonld_docs
+            return json_docs
         elif type(json_docs) == dict:
             json_docs.update(jsonld_context)
             return json_docs
@@ -122,7 +131,7 @@ class JSONLDHelper:
                            You input is %s. The first 100 chars of the input is %s", type(jsonld_docs), jsonld_doc[:100])
             return None
 
-    def json2nquads(json_docs, context_file_path):
+    def json2nquads(self, json_docs, context_file_path):
         """
         Given a JSON document, perform the following actions
         1) Find the json-ld context file based on endpoint_name
@@ -140,8 +149,7 @@ class JSONLDHelper:
         predicate:
             NQUADS predicate, default is None
         """
-        context_file = readFile(context_file_path)
-        jsonld_docs = self.json2jsonld(json_docs, context_file)
+        jsonld_docs = self.json2jsonld(json_docs, context_file_path)
         nquads = self.jsonld2nquads(jsonld_docs)
         return nquads
 
@@ -209,6 +217,8 @@ class JSONLDHelper:
         find the corresponding object value(s)
         """
         object_values = []
+        if '@default' in nquads:
+            nquads = nquads['@default']
         for _nquad in nquads:
             if _nquad['predicate']['value'] == predicate_value:
                 object_values.append(_nquad['object']['value'])
@@ -221,6 +231,8 @@ class JSONLDHelper:
         """
         if not results:
             results = defaultdict(list)
+        if '@default' in nquads:
+            nquads = nquads['@default']
         for _nquad in nquads:
             if _nquad['subject']['value'] == subject_value:
                 current_predicate_value = _nquad['predicate']['value']
@@ -246,6 +258,11 @@ class JSONLDHelper:
                 else:
                     results[_association].append({'http://biothings.io/explorer/vocab/attributes/id': [_object_value]})
         return results
+
+    def fetch_properties_by_association_and_prefix_in_nquads(self, nquads, association, prefix):
+        association_results = self.fetch_properties_by_association_in_nquads(nquads, [association])
+        association_and_prefix_results = [_doc for _doc in association_results[association] if _doc['http://biothings.io/explorer/vocab/attributes/id'][0].startswith(prefix)]
+        return association_and_prefix_results
 
 t = jsonld.JsonLdProcessor()
 
