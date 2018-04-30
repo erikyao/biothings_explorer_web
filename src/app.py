@@ -19,6 +19,7 @@ from handlers.basehandler import BaseHandler
 from handlers.DirectPathHandler import DirectPathHandler
 from handlers.DirectInput2OutputHandler import DirectInput2OutputHandler
 from handlers.FindSynonymHandler import SynonymHandler
+from handlers.SemanticQueryHandler import QuerySemanticsHandler
 
 client = Client('https://9dd387ee33954e9887ef4a6b55c7aa29:d98404d6199a4db1aa9b5a1e9fc3c975@sentry.io/294205')
 
@@ -74,7 +75,8 @@ class Application(tornado.web.Application):
             (r"/explorer/api/v2/crawler", Crawler),
             (r"/explorer/api/v2/directoutput", DirectPathHandler),
             (r"/explorer/api/v2/findsynonym", SynonymHandler),
-            (r"/explorer/api/v2/directinput2output", DirectInput2OutputHandler)
+            (r"/explorer/api/v2/directinput2output", DirectInput2OutputHandler),
+            (r"/explorer/api/v2/semanticquery", QuerySemanticsHandler)
         ]
 
         tornado.web.Application.__init__(self, handlers, **settings)
