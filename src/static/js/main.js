@@ -1,9 +1,6 @@
 $(function(){
 	//by default, when user opens the biothings explorer, 
 	//the overview of api road map will be displayed
-	drawSemanticMap();
-	drawIdLevelMap();
-	drawApiLevelMap();
 	drawColorSchema();
 	$(".tabs").tabs();
 	$(".collapsible").collapsible();
