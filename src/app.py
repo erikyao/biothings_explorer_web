@@ -32,7 +32,7 @@ class MainHandler(tornado.web.RequestHandler):
 class APIHandler(tornado.web.RequestHandler):
     @tornado.web.addslash
     def get(self):
-        self.render("api.html", messages=None)
+        self.write("Hello, world")
 
 class Application(tornado.web.Application):
     def __init__(self):
@@ -43,22 +43,7 @@ class Application(tornado.web.Application):
         }
         handlers = [
             (r"/explorer/?", MainHandler),
-            (r"/explorer/api/?", APIHandler),
-            (r"/explorer/static/(.*)", tornado.web.StaticFileHandler, {'path': settings['static_path']}),
-            (r"/explorer/path", ConnectingPathHandler),
-            (r"/explorer/input", ConnectingInputHandler),
-            (r"/explorer/apimap", ApiMapHandler),
-            (r"/explorer/output", ConnectingOutputHandler),
-            (r"/explorer/endpoint", EndpointHandler),
-            (r"/explorer/findoutput", FindOutputHandler),
-            (r"/explorer/apimapsankey", ApiMapHandlerSankey),
-            (r"/explorer/input2endpoint", Input2EndpointHandler),
-            (r"/explorer/endpoint2output", Endpoint2OutputHandler),
-            (r"/explorer/findedgelabel", FindEdgeLabel),
-            (r"/explorer/api/v2/knowledgemap", KnowledgeMap),
-            (r"/explorer/api/v1/path", KnowledgeMapPath),
-            (r"/explorer/api/v2/metadata/([^/]+)", MetaDataHandler),
-            (r"/explorer/api/v2/findpath", KnowledgeMapPath)
+            (r"/explorer/api/?", APIHandler)
         ]
 
         tornado.web.Application.__init__(self, handlers, **settings)
