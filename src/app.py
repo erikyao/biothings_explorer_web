@@ -11,8 +11,6 @@ from  tornado.escape import json_decode
 from  tornado.escape import json_encode
 from tornado.options import define, options
 
-from handlers.ConnectingPathHandler import FindEdgeLabel, FindOutputHandler, MetaDataHandler, ConnectingPathHandler, EndpointHandler, ConnectingOutputHandler, ConnectingInputHandler, ApiMapHandler, ApiMapHandlerSankey, Input2EndpointHandler, KnowledgeMap, KnowledgeMapPath, Endpoint2OutputHandler
-from handlers.entitycrawler import Crawler
 from handlers.basehandler import BaseHandler
 
 
