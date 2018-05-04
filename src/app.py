@@ -27,7 +27,7 @@ client = Client('https://9dd387ee33954e9887ef4a6b55c7aa29:d98404d6199a4db1aa9b5a
 class MainHandler(tornado.web.RequestHandler):
     @tornado.web.addslash
     def get(self):
-        self.render("index.html", messages=None)
+        self.write("Hello, world")
 
 class APIHandler(tornado.web.RequestHandler):
     @tornado.web.addslash
