@@ -34,21 +34,6 @@ class APIHandler(tornado.web.RequestHandler):
     def get(self):
         self.render("api.html", messages=None)
 
-class TutorialHandler(tornado.web.RequestHandler):
-    @tornado.web.addslash
-    def get(self):
-        self.render("tutorial.html", messages=None)
-
-class CrawlerHandler(tornado.web.RequestHandler):
-    @tornado.web.addslash
-    def get(self):
-        self.render("crawler.html", messages=None)
-"""
-class ExplorerHandler(tornado.web.RequestHandler):
-    @tornado.web.addslash
-    def get(self):
-        self.render("explorer.html", messages=None)
-"""
 class Application(tornado.web.Application):
     def __init__(self):
         settings = {
@@ -60,10 +45,7 @@ class Application(tornado.web.Application):
             (r"/explorer/?", MainHandler),
             (r"/explorer/tutorial/?", TutorialHandler),
             (r"/explorer/api/?", APIHandler),
-            #(r"/explorer/explorer/?", ExplorerHandler),
-            #(r"/explorer/explorer/static/(.*)", tornado.web.StaticFileHandler, {'path': settings['static_path']}),
             (r"/explorer/static/(.*)", tornado.web.StaticFileHandler, {'path': settings['static_path']}),
-            (r"/explorer/tutorial/static/(.*)", tornado.web.StaticFileHandler, {'path': settings['static_path']}),
             (r"/explorer/crawler/?", CrawlerHandler),
             (r"/explorer/crawler/static/(.*)", tornado.web.StaticFileHandler, {'path': settings['static_path']}),
             (r"/explorer/path", ConnectingPathHandler),
@@ -79,12 +61,7 @@ class Application(tornado.web.Application):
             (r"/explorer/api/v2/knowledgemap", KnowledgeMap),
             (r"/explorer/api/v1/path", KnowledgeMapPath),
             (r"/explorer/api/v2/metadata/([^/]+)", MetaDataHandler),
-            (r"/explorer/api/v2/findpath", KnowledgeMapPath),
-            (r"/explorer/api/v2/crawler", Crawler),
-            (r"/explorer/api/v2/directoutput", DirectPathHandler),
-            (r"/explorer/api/v2/findsynonym", SynonymHandler),
-            (r"/explorer/api/v2/directinput2output", DirectInput2OutputHandler),
-            (r"/explorer/api/v2/semanticquery", QuerySemanticsHandler)
+            (r"/explorer/api/v2/findpath", KnowledgeMapPath)
         ]
 
         tornado.web.Application.__init__(self, handlers, **settings)
